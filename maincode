@@ -1,0 +1,344 @@
+SVM: % means comments in matlab
+main function used :      fitecoc(xtrain,ytrain)
+fitcecoc is a function in MATLAB's Statistics and Machine Learning Toolbox used for training a multi-class support vector machine (SVM) using the error-correcting output codes (ECOC) approach. This function trains a binary SVM for each pair of classes in the dataset and then combines the results of these binary SVMs to make predictions for new data points. By using this method, a multi-class classification problem is transformed into several binary classification problems.
+% Load data 
+data = readtable('tgg.csv');
+ 
+% Extract the tile coordinates and store them separately
+tiles = data.Area;
+tile_coords = cellfun(@(x) str2num(x(5:end-1)), tiles, 'UniformOutput', false);
+tile_coords = cat(1, tile_coords{:});
+ 
+% If there are less than 2 columns in tile_coords, add a third column of zeros
+if size(tile_coords, 2) < 2
+    tile_coords(:, 2:3) = 0;
+end
+ 
+% Separate features and labels
+X = table2array(data(:, 2:6));
+Y = categorical(data.Area);
+ 
+% Split data into training and testing sets
+rng(43);
+cvp = cvpartition(Y, 'Holdout', 0.4);
+trainingIdx = training(cvp);
+XTrain = X(trainingIdx, :);
+YTrain = Y(trainingIdx);
+XTest = X(~trainingIdx, :);
+YTest = Y(~trainingIdx);
+ 
+ 
+% Train SVM model
+svmModel = fitcecoc(XTrain, YTrain);
+ 
+% Predict labels for test set
+YTestPredict = predict(svmModel, XTest);
+ 
+ 
+% Create scatter plot of test data and predicted data
+colors = lines(length(categories(Y)));
+figure;
+subplot(1,2,1)
+gscatter(XTest(:,1), XTest(:,2), YTest, colors);
+hold on
+scatter(tile_coords(:,1), tile_coords(:,2), 50, 'k', 'filled');
+hold off
+xlabel('Feature 1');
+ylabel('Feature 2');
+title('Test Data');
+ 
+subplot(1,2,2)
+gscatter(XTest(:,1), XTest(:,2), YTestPredict, colors);
+hold on
+scatter(tile_coords(:,1), tile_coords(:,2), 50, 'k', 'filled');
+hold off
+xlabel('Feature 1');
+ylabel('Feature 2');
+title('Predicted Data');
+legend('Location','bestoutside')
+sgtitle('Scatter Plot of Test and Predicted Data For SVM - 5 Beacon nodes')
+ 
+% Extract true and predicted labels for test set
+YTestTrue = YTest;
+YTestPred = YTestPredict;
+ 
+% Compute accuracy over time
+num_epochs = 50;
+accuracy_over_time = zeros(num_epochs, 1) 
+ 
+ 
+for epoch = 1:num_epochs
+    
+ 
+    svmModel = fitcecoc(XTrain, YTrain);
+ 
+    YTestPredict = predict(svmModel, XTest);
+ 
+ 
+    accuracy_over_time(epoch) = sum(YTestPredict == YTest)/numel(YTest);
+    
+    % Update training and testing sets
+    cvp = cvpartition(Y, 'Holdout', 0.4);
+    trainingIdx = training(cvp);
+    XTrain = X(trainingIdx, :);
+    YTrain = Y(trainingIdx);
+    XTest = X(~trainingIdx, :);
+    YTest = Y(~trainingIdx);
+    accuracy_over_time(epoch) = sum(YTestPredict == YTest)/numel(YTest) 
+end
+ 
+% Evaluate model performance
+accuracy = sum(YTestPredict == YTest)/numel(YTest);
+confMat = confusionmat(YTest, YTestPredict);
+ 
+% Visualize confusion matrix
+figure;
+subplot(1,2,1)
+confusionchart(confMat, unique(YTest));
+title('Test Data Confusion Matrix - SVM (5 Beacon nodes) ');
+ 
+% Calculate mean squared error
+me= mean(accuracy_over_time)
+mse = mean((accuracy_over_time - mean(accuracy_over_time)).^2);
+ 
+% Print mean squared error
+fprintf('Mean squared error of accuracy over time: %f\n', mse);
+fprintf('Mean  accuracy over time: %f\n', me);
+% Plot accuracy over time
+figure;
+plot(accuracy_over_time, 'o-');
+xlabel('Epoch');
+ylabel('Accuracy');
+title('Accuracy over time- SVM (5 Beacon nodes)');
+ylim([0,1]);
+
+
+
+Randomforest Classification
+main function used: Treebagger()
+% Load data
+data = readtable('tgg.csv');
+ 
+% Extract the tile coordinates and store them separately
+tiles = data.Area;
+tile_coords = cellfun(@(x) str2num(x(5:end-1)), tiles, 'UniformOutput', false);
+tile_coords = cat(1, tile_coords{:});
+ 
+% If there are less than 2 columns in tile_coords, add a third column of zeros
+if size(tile_coords, 2) < 2
+    tile_coords(:, 2:3) = 0;
+end
+ 
+% Separate features and labels
+X = table2array(data(:, 2:5));
+Y = categorical(data.Area);
+ 
+% Split data into training and testing sets
+rng(43)
+cvp = cvpartition(Y, 'Holdout', 0.4 );
+trainingIdx = training(cvp);
+XTrain = X(trainingIdx, :);
+YTrain = Y(trainingIdx);
+XTest = X(~trainingIdx, :);
+YTest = categorical(data.Area(~trainingIdx));
+ 
+% Train random forest model
+rfModel = TreeBagger(50, XTrain, YTrain);
+ 
+% Predict labels for test set
+YTestPredict = predict(rfModel, XTest);
+ 
+ 
+ 
+% Extract true and predicted labels for test set
+YTestTrue = YTest;
+YTestPred = YTestPredict;
+ 
+% Create scatter plot of test data and predicted data
+colors = lines(length(categories(Y)));
+figure;
+subplot(1,2,1)
+gscatter(XTest(:,1), XTest(:,2), YTest, colors);
+xlabel('Feature 1');
+ylabel('Feature 2');
+title('Test Data');
+ 
+subplot(1,2,2)
+gscatter(XTest(:,1), XTest(:,2), YTestPredict, colors);
+xlabel('Feature 1');
+ylabel('Feature 2');
+title('Predicted Data');
+legend('Location','bestoutside')
+sgtitle('Scatter Plot of Test and Predicted Data For Random Forest - 5  Beacon nodes')
+ 
+ 
+% Compute accuracy over time
+num_epochs = 50;
+accuracy_over_time = zeros(num_epochs, 1);
+for epoch = 1:num_epochs
+    % Train random forest model on training set
+    rfModel = TreeBagger(50, XTrain, YTrain);
+ 
+    % Predict labels for test set
+    YTestPredict = predict(rfModel, XTest);
+ 
+    % Evaluate model performance
+    accuracy_over_time(epoch) = sum(YTestPredict == YTest)/numel(YTest);
+    
+    % Update training and testing sets
+    cvp = cvpartition(Y, 'Holdout', 0.4);
+    trainingIdx = training(cvp);
+    XTrain = X(trainingIdx, :);
+    YTrain = Y(trainingIdx);
+    XTest = X(~trainingIdx, :);
+    YTest = categorical(data.Area(~trainingIdx));
+     accuracy_over_time(epoch) = sum(YTestPredict == YTest)/numel(YTest) 
+end
+ 
+% Evaluate model performance
+accuracy = sum(YTestPredict == YTest)/numel(YTest);
+confMat = confusionmat(YTest, categorical(YTestPredict));
+ 
+% Visualize confusion matrix
+figure;
+confusionchart(confMat, unique(Y));
+title('Test Data Confusion Matrix - Random Forest (5 Beacon nodes) ');
+ 
+% Calculate mean squared error
+me= mean(accuracy_over_time)
+mse = mean((accuracy_over_time - mean(accuracy_over_time)).^2);
+ 
+% Print mean squared error
+fprintf('Mean squared error of accuracy over time: %f\n', mse);
+fprintf('Mean  accuracy over time: %f\n', me);
+ 
+ 
+% Plot accuracy over time
+figure;
+plot(accuracy_over_time, 'o-');
+xlabel('Epoch');
+ylabel('Accuracy');
+title('Accuracy over time- Random Forest (5 Beacon nodes)');
+ylim([0,1]);
+
+
+
+
+
+
+
+
+
+
+KNN
+
+% Load data
+data = readtable('tgg.csv');
+ 
+% Extract the tile coordinates and store them separately
+tiles = data.Area;
+tile_coords = cellfun(@(x) str2num(x(5:end-1)), tiles, 'UniformOutput', false);
+tile_coords = cat(1, tile_coords{:});
+ 
+% If there are less than 2 columns in tile_coords, add a third column of zeros
+if size(tile_coords, 2) < 2
+    tile_coords(:, 2:3) = 0;
+end
+ 
+% Separate features and labels
+ 
+X = table2array(data(:, 2:6));
+Y = categorical(data.Area);
+ 
+% Split data into training and testing sets
+cvp = cvpartition(Y, 'Holdout', 0.3);
+trainingIdx = training(cvp);
+XTrain = X(trainingIdx, :);
+YTrain = Y(trainingIdx);
+XTest = X(~trainingIdx, :);
+YTest = categorical(data.Area(~trainingIdx));
+ 
+% Train KNN model
+knnModel = fitcknn(XTrain, YTrain, 'NumNeighbors', 5);
+ 
+% Predict labels for test set
+YTestPredict = predict(knnModel, XTest);
+ 
+% Create scatter plot of test data and predicted data
+colors = lines(length(categories(Y)));
+figure;
+subplot(1,2,1)
+gscatter(XTest(:,1), XTest(:,2), YTest, colors);
+hold on
+scatter(tile_coords(:,1), tile_coords(:,2), 50, 'k', 'filled');
+hold off
+xlabel('Feature 1');
+ylabel('Feature 2');
+title('Test Data');
+ 
+subplot(1,2,2)
+gscatter(XTest(:,1), XTest(:,2), YTestPredict, colors);
+hold on
+scatter(tile_coords(:,1), tile_coords(:,2), 50, 'k', 'filled');
+hold off
+xlabel('Feature 1');
+ylabel('Feature 2');
+title('Predicted Data');
+legend('Location','bestoutside')
+sgtitle('Scatter Plot of Test and Predicted Data')
+ 
+ 
+ 
+% Extract true and predicted labels for test set
+YTestTrue = YTest;
+YTestPred = YTestPredict;
+ 
+% Compute accuracy over time
+num_epochs = 50;
+accuracy_over_time = zeros(num_epochs, 1);
+for epoch = 1:num_epochs
+    % Train KNN model on training set
+    knnModel = fitcknn(XTrain, YTrain, 'NumNeighbors', 5);
+ 
+    % Predict labels for test set
+    YTestPredict = predict(knnModel, XTest);
+ 
+    % Evaluate model performance
+    accuracy_over_time(epoch) = sum(YTestPredict == YTest)/numel(YTest);
+    
+    % Update training and testing sets
+    cvp = cvpartition(Y, 'Holdout', 0.3);
+    trainingIdx = training(cvp);
+    XTrain = X(trainingIdx, :);
+    YTrain = Y(trainingIdx);
+    XTest = X(~trainingIdx, :);
+    YTest = categorical(data.Area(~trainingIdx));
+    accuracy_over_time(epoch) = sum(YTestPredict == YTest)/numel(YTest) 
+end
+ 
+% Calculate mean squared error
+me= mean(accuracy_over_time)
+mse = mean((accuracy_over_time - mean(accuracy_over_time)).^2); 
+ 
+% Evaluate model performance
+accuracy = sum(YTestPredict == YTest)/numel(YTest);
+confMat = confusionmat(YTest, categorical(YTestPredict));
+ 
+% Visualize confusion matrix
+figure;
+confusionchart(confMat, unique(Y));
+ 
+ 
+% Print mean squared error
+fprintf('Mean squared error of accuracy over time: %f\n', mse);
+fprintf('Mean  accuracy over time: %f\n', me);
+ 
+ 
+ 
+% Plot accuracy over time
+figure;
+plot(accuracy_over_time, 'o-');
+xlabel('Epoch');
+ylabel('Accuracy');
+title('Accuracy over time');
+
